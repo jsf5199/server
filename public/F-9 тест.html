@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F-9 Обращение</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        form {
+            max-width: 500px;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input, textarea, button {
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: green;
+            color: white;
+            cursor: pointer;
+            border: none;
+            font-size: 18px;
+        }
+        button:hover {
+            background-color: darkgreen;
+        }
+        .list {
+            margin-top: 20px;
+        }
+        .list-item {
+            background: #bee6cb;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .list-item span {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .status {
+            font-weight: bold;
+            color: #db0206;
+        }
+        .response {
+            margin-top: 10px;
+            color: #0c08d1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Напишите свое обращение (F-9)</h1>
+
+    <form id="requestForm">
+        <input type="text" id="name" placeholder="Имя" required>
+        <input type="text" id="phone" placeholder="+998 99-999-9999" required>
+        <textarea id="message" placeholder="Напишите свое обращение" required></textarea>
+        <button type="submit">Отправить</button>
+    </form>
+
+    <!-- Список заявок -->
+    <div class="list" id="requestsList"></div>
+</div>
+
+<script>
+// Задание переменных для страницы
+const pageName = 'f-9'; // Для F-4: заменить на 'f-4'
+
+// Функция для отправки заявки
+document.getElementById('requestForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const name = document.getElementById('name').value;
+    const phone = document.getElementById('phone').value;
+    const message = document.getElementById('message').value;
+
+    fetch('/submit-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: pageName, name, phone, message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        loadRequests(); // Перезагружаем список заявок после отправки
+        document.getElementById('requestForm').reset(); // Очищаем форму
+    })
+    .catch(err => console.error('Ошибка при отправке:', err));
+});
+
+// Функция для загрузки списка заявок
+function loadRequests() {
+    fetch(`/get-requests?page=${pageName}`)
+        .then(response => response.json())
+        .then(data => {
+            const list = document.getElementById('requestsList');
+            list.innerHTML = ''; // Очищаем список перед обновлением
+
+            if (data.length === 0) {
+                list.innerHTML = '<p>Заявок нет</p>';
+            } else {
+                data.forEach(request => {
+                    const requestElement = document.createElement('div');
+                    requestElement.classList.add('list-item');
+                    requestElement.innerHTML = `
+                        <span><strong>Имя:</strong> ${request.name}</span>
+                        <span><strong>Телефон:</strong> ${request.phone}</span>
+                        <span><strong>Сообщение:</strong> ${request.message}</span>
+                        <span class="status"><strong>Статус:</strong> ${request.status}</span>
+                        <span><strong>Время получения:</strong> ${request.timeReceived}</span>
+                        ${request.timeUpdated ? `<span><strong>Обновлено:</strong> ${request.timeUpdated}</span>` : ''}
+                        ${request.response ? `<div class="response"><strong>Ответ:</strong> ${request.response}</div>` : ''}
+                    `;
+                    list.appendChild(requestElement);
+                });
+            }
+        })
+        .catch(err => console.error('Ошибка при получении заявок:', err));
+}
+
+// Изначальная загрузка заявок при загрузке страницы
+loadRequests();
+</script>
+
+</body>
+</html>

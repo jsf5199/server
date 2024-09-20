@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление заявками</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+        }
+        select, button, input {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .list-item {
+            background: #bee6cb;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .list-item span {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .status {
+            font-weight: bold;
+            color: #db0206;
+        }
+        .response {
+            margin-top: 10px;
+            color: #0c08d1;
+        }
+ header {
+
+ background-color: #fffff;
+            color: black;
+            padding: 10px;
+            text-align: center;
+            width: 100%;
+img {
+            max-width: 150px;
+            margin-bottom: 0px;
+
+ }
+
+    </style>
+</head>
+<body>
+ <header>
+<img src="Logo.png" alt="Логотип">
+</header>
+
+<div class="container">
+    <h1>Управление заявками</h1>
+
+    <!-- Выбор страницы для отображения заявок -->
+    <label for="pageSelect">Выберите страницу:</label>
+    <select id="pageSelect">
+        <option value="f-1">F-1</option>
+        <option value="f-4">F-4</option>
+        <option value="f-5">F-5</option>
+	
+    </select>
+
+    <!-- Поля для выбора диапазона дат -->
+    <label for="startDate">Дата:</label>
+    <input type="date" id="startDate">
+    <label for="endDate"> </label>
+    <input type="date" id="endDate">
+    <button id="filterButton">Фильтр</button>
+
+    <!-- Список заявок -->
+    <div id="requestsList"></div>
+</div>
+
+<script>
+// Функция для получения заявок
+function loadRequests(page, startDate, endDate) {
+    fetch(`/get-requests?page=${page}`)
+        .then(response => response.json())
+        .then(data => {
+            const list = document.getElementById('requestsList');
+            list.innerHTML = ''; // Очищаем список перед обновлением
+
+            // Фильтрация по диапазону дат
+            const filteredData = data.filter(request => {
+                const requestDate = new Date(request.timeReceived.split(' - ')[0].split('.').reverse().join('-'));
+                if (startDate && endDate) {
+                    return requestDate >= new Date(startDate) && requestDate <= new Date(endDate);
+                }
+                return true;
+            });
+
+            if (filteredData.length === 0) {
+                list.innerHTML = '<p>Заявок нет</p>';
+            } else {
+                filteredData.forEach(request => {
+                    const requestElement = document.createElement('div');
+                    requestElement.classList.add('list-item');
+                    requestElement.innerHTML = `
+                        <span><strong>Имя:</strong> ${request.name}</span>
+                        <span><strong>Телефон:</strong> ${request.phone}</span>
+                        <span><strong>Сообщение:</strong> ${request.message}</span>
+                        <span class="status"><strong>Статус:</strong> ${request.status}</span>
+                        <span><strong>Время получения:</strong> ${request.timeReceived}</span>
+                        ${request.timeUpdated ? `<span><strong>Обновлено:</strong> ${request.timeUpdated}</span>` : ''}
+                        ${request.response ? `<div class="response"><strong>Ответ:</strong> ${request.response}</div>` : ''}
+
+                        <label for="status-${request.id}">Изменить статус:</label>
+                        <select id="status-${request.id}">
+                            <option value="новое" ${request.status === 'новое' ? 'selected' : ''}>Новое</option>
+                            <option value="в работе" ${request.status === 'в работе' ? 'selected' : ''}>В работе</option>
+                            <option value="выполнено" ${request.status === 'выполнено' ? 'selected' : ''}>Выполнено</option>
+                        </select>
+
+                        <label for="response-${request.id}">Комментарий:</label>
+                        <textarea id="response-${request.id}" placeholder="Комментарий для клиента">${request.response || ''}</textarea>
+                        <button onclick="updateStatus('${page}', '${request.id}')">Обновить статус</button>
+                    `;
+                    list.appendChild(requestElement);
+                });
+            }
+        })
+        .catch(err => console.error('Ошибка при получении заявок:', err));
+}
+
+// Функция для обновления статуса заявки
+function updateStatus(page, id) {
+    const status = document.getElementById(`status-${id}`).value;
+    const response = document.getElementById(`response-${id}`).value;
+
+    fetch('/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page, id, status, response })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        loadRequests(page, startDate, endDate); // Перезагружаем заявки после обновления
+    })
+    .catch(err => console.error('Ошибка при обновлении статуса:', err));
+}
+
+// Загрузка заявок при выборе страницы
+document.getElementById('pageSelect').addEventListener('change', function () {
+    const page = this.value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    loadRequests(page, startDate, endDate);
+});
+
+// Фильтрация заявок по датам
+document.getElementById('filterButton').addEventListener('click', function () {
+    const page = document.getElementById('pageSelect').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    loadRequests(page, startDate, endDate);
+});
+
+// Изначальная загрузка заявок для страницы F-1
+loadRequests('f-1');
+</script>
+
+</body>
+</html>
