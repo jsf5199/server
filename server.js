@@ -83,3 +83,20 @@ app.post('/submit-request', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('database.db');
+
+// Создание таблицы, если она не существует
+db.run('CREATE TABLE IF NOT EXISTS entries (field1 TEXT, field2 TEXT)');
+app.post('/submit-form', (req, res) => {
+    const { field1, field2 } = req.body; // Получите данные из формы
+    const stmt = db.prepare('INSERT INTO entries (field1, field2) VALUES (?, ?)');
+    stmt.run(field1, field2, (err) => {
+        if (err) {
+            return res.status(500).send('Ошибка при сохранении данных');
+        }
+        res.send('Данные сохранены!');
+    });
+    stmt.finalize();
+});
+
